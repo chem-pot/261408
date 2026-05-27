@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>펩타이드 결합 시뮬레이션</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Malgun Gothic', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        h1 {
+            color: white;
+            font-size: 26px;
+            margin-bottom: 6px;
+            text-shadow: 0 0 20px rgba(102,126,234,0.8);
+            letter-spacing: 1px;
+        }
+
+        .subtitle {
+            color: rgba(255,255,255,0.7);
+            font-size: 13px;
+            margin-bottom: 20px;
+        }
+
+        .main-card {
+            background: rgba(255,255,255,0.97);
+            border-radius: 24px;
+            padding: 28px;
+            width: 100%;
+            max-width: 860px;
+            box-shadow: 0 25px 80px rgba(0,0,0,0.5);
+        }
+
+        .steps {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .step {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            background: #f0f0f0;
+            color: #aaa;
+            transition: all 0.4s;
+        }
+
+        .step.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            box-shadow: 0 4px 12px rgba(102,126,234,0.5);
+        }
+
+        .step.done { background: #d4edda; color: #28a745; }
+
+        .canvas-wrap {
+            background: linear-gradient(180deg, #0d1117 0%, #161b22 100%);
+            border-radius: 16px;
+            border: 2px solid #30363d;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        canvas { display: block; width: 100%; }
+
+        .info-box {
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-bottom: 18px;
+            font-size: 13.5px;
+            line-height: 1.7;
+            transition: all 0.4s;
+        }
+
+        .info-box.s1 { background:#fff3cd; border-left:4px solid #ffc107; color:#856404; }
+        .info-box.s2 { background:#cce5ff; border-left:4px solid #007bff; color:#004085; }
+        .info-box.s3 { background:#d1ecf1; border-left:4px solid #17a2b8; color:#0c5460; }
+        .info-box.s4 { background:#d4edda; border-left:4px solid #28a745; color:#155724; }
+
+        .controls { display:flex; flex-direction:column; gap:16px; }
+
+        .ctrl-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .ctrl-label {
+            font-size: 13px;
+            font-weight: bold;
+            color: #444;
+            min-width: 110px;
+        }
+
+        .amino-btn {
+            width: 62px; height: 62px;
+            border-radius: 50%;
+            border: none;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+        }
+
+        .amino-btn:hover { transform: scale(1.12) translateY(-2px); }
+        .amino-btn:active { transform: scale(0.93); }
+        .btn-A { background: linear-gradient(135deg,#ff6b6b,#ee5a24); color:white; }
+        .btn-B { background: linear-gradient(135deg,#48dbfb,#0abde3); color:white; }
+
+        .btn-group { display:flex; flex-direction:column; align-items:center; gap:4px; }
+        .btn-sub { font-size:11px; color:#777; }
+
+        .slider-wrap { flex:1; min-width:220px; }
+
+        .slider-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+
+        .label-far   { color: #e74c3c; }
+        .label-close { color: #27ae60; }
+        .label-mid   { color: #888; font-size:11px; }
+
+        /* ★ 슬라이더: 왼쪽=가까이(초록), 오른쪽=멀리(빨강) */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 12px;
+            border-radius: 6px;
+            outline: none;
+            cursor: pointer;
+            /* 가까이(왼쪽) → 초록, 멀리(오른쪽) → 빨강 */
+            background: linear-gradient(to right,
+                #27ae60 0%,
+                #f1c40f 50%,
+                #e74c3c 100%);
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 26px; height: 26px;
+            border-radius: 50%;
+            background: white;
+            border: 3px solid #555;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+        input[type=range]:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .dist-status {
+            text-align: center;
+            margin-top: 5px;
+            font-size: 12px;
+            font-weight: bold;
+            height: 18px;
+        }
+
+        .peptide-btn {
+            padding: 12px 26px;
+            border-radius: 30px;
+            border: none;
+            background: linear-gradient(135deg,#6c5ce7,#a29bfe);
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(108,92,231,0.45);
+            transition: all 0.3s;
+        }
+
+        .peptide-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 22px rgba(108,92,231,0.6);
+        }
+
+        .peptide-btn:disabled {
+            background: #ccc;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+
+        .reset-btn {
+            padding: 11px 20px;
+            border-radius: 30px;
+            border: 2px solid #ddd;
+            background: white;
+            color: #777;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .reset-btn:hover { border-color:#667eea; color:#667eea; }
+
+        .formula-row {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 6px;
+        }
+
+        .badge { padding:5px 13px; border-radius:20px; font-size:12px; font-weight:bold; }
+        .b-red    { background:#ffe0e0; color:#c0392b; }
+        .b-blue   { background:#e0f4ff; color:#2980b9; }
+        .b-green  { background:#e0ffe6; color:#27ae60; }
+        .b-gray   { background:#f0f0f0; color:#666; }
+        .b-purple { background:#f3f0ff; color:#6c5ce7; }
+    </style>
+</head>
+<body>
+
+<h1>🧬 펩타이드 결합 시뮬레이션</h1>
+<p class="subtitle">두 아미노산이 만나 펩타이드 결합을 형성하는 과정</p>
+
+<div class="main-card">
+
+    <div class="steps">
+        <div class="step active" id="st1">① 아미노산 등장</div>
+        <div class="step" id="st2">② 거리 조절</div>
+        <div class="step" id="st3">③ 물 분자 방출</div>
+        <div class="step" id="st4">④ 펩타이드 결합 완성!</div>
+    </div>
+
+    <div class="canvas-wrap">
+        <canvas id="c" height="300"></canvas>
+    </div>
+
+    <div class="info-box s1" id="infoBox">
+        🔴 <strong>A 버튼</strong>과 🔵 <strong>B 버튼</strong>을 눌러 두 아미노산을 등장시키세요!
+    </div>
+
+    <div class="formula-row" id="fRow">
+        <span class="badge b-gray">아미노산을 등장시켜 주세요</span>
+    </div>
+
+    <div class="controls" style="margin-top:18px;">
+
+        <!-- 아미노산 등장 버튼 -->
+        <div class="ctrl-row">
+            <span class="ctrl-label">① 아미노산 등장</span>
+            <div class="btn-group">
+                <button class="amino-btn btn-A" id="btnA" onclick="spawnAmino('A')">A</button>
+                <span class="btn-sub">아미노산 A</span>
+            </div>
+            <div class="btn-group">
+                <button class="amino-btn btn-B" id="btnB" onclick="spawnAmino('B')">B</button>
+                <span class="btn-sub">아미노산 B</span>
+            </div>
+        </div>
+
+        <!-- ★ 슬라이더: 왼쪽 끝=가까이(0), 오른쪽 끝=멀리(100) -->
+        <div class="ctrl-row">
+            <span class="ctrl-label">② 거리 조절</span>
+            <div class="slider-wrap">
+                <div class="slider-labels">
+                    <span class="label-close">🟢 가까이</span>
+                    <span class="label-mid" id="distLabel">슬라이더를 움직여보세요</span>
+                    <span class="label-far">🔴 멀리</span>
+                </div>
+                <input type="range" id="distSlider"
+                       min="0" max="100" value="100"
+                       oninput="onSlider(this.value)"
+                       disabled>
+                <div class="dist-status" id="distStatus"></div>
+            </div>
+        </div>
+
+        <!-- 결합 버튼 -->
+        <div class="ctrl-row">
+            <span class="ctrl-label">③ 결합 형성</span>
+            <button class="peptide-btn" id="bondBtn" disabled onclick="startBond()">
+                💧 물 분자 방출 → 펩타이드 결합!
+            </button>
+            <button class="reset-btn" onclick="resetAll()">↺ 처음으로</button>
+        </div>
+
+    </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+//  캔버스
+// ═══════════════════════════════════════
+const cvs = document.getElementById('c');
+const ctx = cvs.getContext('2d');
+
+function resize(){
+    cvs.width  = cvs.offsetWidth;
+    cvs.height = 300;
+    draw();
+}
+window.addEventListener('resize', resize);
+
+// ═══════════════════════════════════════
+//  상태
+//  sliderVal: 0 = 가장 가까이, 100 = 가장 멀리
+// ═══════════════════════════════════════
+let S = {
+    hasA : false,
+    hasB : false,
+    sliderVal : 100,   // 시작은 멀리(100)
+    phase : 0,         // 0초기 1하나등장 2슬라이더 3결합중 4완성
+    animId : null,
+    waterParticles : []
+};
+
+// ═══════════════════════════════════════
+//  유틸
+// ═══════════════════════════════════════
+function lerp(a,b,t){ return a+(b-a)*t; }
+
+function pill(x,y,w,h,r,fill,stroke,lw=2){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.lineTo(x+w-r,y);
+    ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+    ctx.lineTo(x+w,y+h-r);
+    ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+    ctx.lineTo(x+r,y+h);
+    ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+    ctx.lineTo(x,y+r);
+    ctx.quadraticCurveTo(x,y,x+r,y);
+    ctx.closePath();
+    ctx.fillStyle=fill; ctx.fill();
+    ctx.strokeStyle=stroke; ctx.lineWidth=lw; ctx.stroke();
+}
+
+// ═══════════════════════════════════════
+//  아미노산 그리기
+// ═══════════════════════════════════════
+function drawAminoAcid(cx, cy, type, showNH2, showCOOH){
+    const isA  = type==='A';
+    const R    = 46;
+    const col  = isA ? '#ee5a24' : '#0abde3';
+    const gC1  = isA ? '#ff9f9f' : '#a0eeff';
+    const gC2  = isA ? '#ee5a24' : '#0abde3';
+
+    // 그림자 + 본체
+    ctx.save();
+    ctx.shadowColor = isA ? 'rgba(238,90,36,0.5)' : 'rgba(10,189,227,0.5)';
+    ctx.shadowBlur  = 18;
+    const g = ctx.createRadialGradient(cx-14,cy-14,4, cx,cy,R);
+    g.addColorStop(0, gC1);
+    g.addColorStop(1, gC2);
+    ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2);
+    ctx.fillStyle=g; ctx.fill();
+    ctx.strokeStyle=col; ctx.lineWidth=3; ctx.stroke();
+    ctx.restore();
+
+    // 텍스트
+    ctx.fillStyle='white';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.font='bold 13px Malgun Gothic';
+    ctx.fillText('아미노산', cx, cy-10);
+    ctx.font='bold 24px Arial';
+    ctx.fillText(type, cx, cy+12);
+
+    // R기 (위)
+    const rX=cx, rY=cy-R-24;
+    ctx.save();
+    ctx.shadowColor=col; ctx.shadowBlur=8;
+    ctx.beginPath(); ctx.arc(rX,rY,16,0,Math.PI*2);
+    ctx.fillStyle=isA?'#ffe8e0':'#e0f8ff';
+    ctx.fill(); ctx.strokeStyle=col; ctx.lineWidth=2; ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle=col; ctx.font='bold 10px Arial';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('R기',rX,rY);
+    ctx.strokeStyle=col; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(cx,cy-R); ctx.lineTo(cx,rY+16); ctx.stroke();
+
+    // NH2 (왼쪽)
+    if(showNH2){
+        const nx=cx-R-52, ny=cy;
+        ctx.strokeStyle='#27ae60'; ctx.lineWidth=2.5;
+        ctx.beginPath(); ctx.moveTo(cx-R,ny); ctx.lineTo(nx+26,ny); ctx.stroke();
+        ctx.save();
+        ctx.shadowColor='rgba(39,174,96,0.4)'; ctx.shadowBlur=8;
+        pill(nx-26,ny-14,52,28,10,'#d4edda','#27ae60');
+        ctx.restore();
+        ctx.fillStyle='#155724';
+        ctx.font='bold 13px Arial';
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText('-NH₂',nx,ny);
+    }
+
+    // COOH (오른쪽)
+    if(showCOOH){
+        const ox=cx+R+52, oy=cy;
+        ctx.strokeStyle='#e74c3c'; ctx.lineWidth=2.5;
+        ctx.beginPath(); ctx.moveTo(cx+R,oy); ctx.lineTo(ox-28,oy); ctx.stroke();
+        ctx.save();
+        ctx.shadowColor='rgba(231,76,60,0.4)'; ctx.shadowBlur=8;
+        pill(ox-28,oy-14,56,28,10,'#ffe0e0','#e74c3c');
+        ctx.restore();
+        ctx.fillStyle='#922b21';
+        ctx.font='bold 13px Arial';
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText('-COOH',ox,oy);
+    }
+}
+
+// ═══════════════════════════════════════
+//  물 분자
+// ═══════════════════════════════════════
+function drawWaterMolecule(cx,cy,scale=1,alpha=1){
+    ctx.save();
+    ctx.globalAlpha=alpha;
+    ctx.translate(cx,cy); ctx.scale(scale,scale);
+
+    ctx.beginPath(); ctx.arc(0,0,14,0,Math.PI*2);
+    ctx.fillStyle='#e74c3c'; ctx.fill();
+    ctx.strokeStyle='#c0392b'; ctx.lineWidth=2; ctx.stroke();
+    ctx.fillStyle='white'; ctx.font='bold 11px Arial';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('O',0,0);
+
+    ctx.beginPath(); ctx.arc(-18,15,10,0,Math.PI*2);
+    ctx.fillStyle='#74b9ff'; ctx.fill();
+    ctx.strokeStyle='#0984e3'; ctx.lineWidth=2; ctx.stroke();
+    ctx.fillStyle='white'; ctx.font='bold 9px Arial';
+    ctx.fillText('H',-18,15);
+
+    ctx.beginPath(); ctx.arc(18,15,10,0,Math.PI*2);
+    ctx.fillStyle='#74b9ff'; ctx.fill();
+    ctx.strokeStyle='#0984e3'; ctx.lineWidth=2; ctx.stroke();
+    ctx.fillStyle='white'; ctx.font='bold 9px Arial';
+    ctx.fillText('H',18,15);
+
+    ctx.strokeStyle='rgba(255,255,255,0.5)'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(-5,8); ctx.lineTo(-12,10); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(5,8);  ctx.lineTo(12,10);  ctx.stroke();
+    ctx.restore();
+}
+
+// ═══════════════════════════════════════
+//  펩타이드 결합
+// ═══════════════════════════════════════
+function drawPeptideBond(cx,cy){
+    ctx.save();
+    ctx.shadowColor='rgba(108,92,231,0.8)'; ctx.shadowBlur=30;
+    ctx.beginPath(); ctx.arc(cx,cy,22,0,Math.PI*2);
+    ctx.fillStyle='rgba(108,92,231,0.25)'; ctx.fill();
+    ctx.restore();
+
+    ctx.strokeStyle='#a29bfe'; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.moveTo(cx-20,cy-5); ctx.lineTo(cx+20,cy-5); ctx.stroke();
+    ctx.strokeStyle='#6c5ce7'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(cx-16,cy+4); ctx.lineTo(cx+16,cy+4); ctx.stroke();
+
+    ctx.save();
+    ctx.shadowColor='rgba(108,92,231,0.5)'; ctx.shadowBlur=10;
+    pill(cx-42,cy-52,84,26,8,'rgba(108,92,231,0.15)','#6c5ce7',2);
+    ctx.restore();
+    ctx.fillStyle='#6c5ce7'; ctx.font='bold 12px Arial';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('-CO-NH-',cx,cy-39);
+    ctx.font='bold 11px Malgun Gothic';
+    ctx.fillText('펩타이드 결합',cx,cy+30);
+}
+
+// ═══════════════════════════════════════
+//  화살표
+// ═══════════════════════════════════════
+function drawArrow(x1,y1,x2,y2,color,lw=2.5){
+    ctx.save();
+    ctx.strokeStyle=color; ctx.lineWidth=lw;
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    const angle=Math.atan2(y2-y1,x2-x1);
+    ctx.fillStyle=color;
+    ctx.beginPath();
+    ctx.moveTo(x2,y2);
+    ctx.lineTo(x2-12*Math.cos(angle-0.4),y2-12*Math.sin(angle-0.4));
+    ctx.lineTo(x2-12*Math.cos(angle+0.4),y2-12*Math.sin(angle+0.4));
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+}
+
+// ═══════════════════════════════════════
+//  메인 draw
+// ═══════════════════════════════════════
+function draw(){
+    const W=cvs.width, H=cvs.height;
+    ctx.clearRect(0,0,W,H);
+
+    // 배경 격자
+    ctx.save();
+    ctx.strokeStyle='rgba(255,255,255,0.03)'; ctx.lineWidth=1;
+    for(let x=0;x<W;x+=40){ ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke(); }
+    for(let y=0;y<H;y+=40){ ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke(); }
+    ctx.restore();
+
+    if(!S.hasA && !S.hasB){
+        ctx.fillStyle='rgba(255,255,255,0.3)';
+        ctx.font='15px Malgun Gothic';
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText('버튼을 눌러 아미노산을 등장시키세요 🔬', W/2, H/2);
+        return;
+    }
+
+    const cy   = H/2 + 10;
+    const midX = W/2;
+
+    // ★ sliderVal: 0=가까이, 100=멀리
+    // 두 원 사이 간격 계산
+    const minGap = 104;                          // 완전히 붙은 상태
+    const maxGap = Math.min(W*0.72, 570);        // 최대로 멀어진 상태
+    const gap    = lerp(minGap, maxGap, S.sliderVal / 100);
+
+    const ax = midX - gap/2;
+    const bx = midX + gap/2;
+
+    // ── 완전 접촉 시 반응 대기 표시 ──
+    if(S.hasA && S.hasB && S.phase===2 && S.sliderVal===0){
+        ctx.save();
+        ctx.strokeStyle='rgba(255,215,0,0.8)'; ctx.lineWidth=2;
+        ctx.setLineDash([5,4]);
+        ctx.beginPath(); ctx.moveTo(ax+46,cy); ctx.lineTo(bx-46,cy); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+
+        ctx.save();
+        ctx.shadowColor='rgba(255,215,0,0.7)'; ctx.shadowBlur=14;
+        pill(midX-68,cy-54,136,26,10,'rgba(255,215,0,0.15)','rgba(255,215,0,0.9)',2);
+        ctx.restore();
+        ctx.fillStyle='rgba(255,215,0,1)';
+        ctx.font='bold 13px Malgun Gothic';
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText('⚡ 반응 준비 완료!', midX, cy-41);
+    }
+
+    // ── 결합 중 / 완성 ──
+    if(S.phase>=3){
+        drawPeptideBond(midX, cy);
+    }
+
+    // ── 아미노산 A ──
+    if(S.hasA){
+        drawAminoAcid(ax, cy, 'A', true, S.phase<4);
+    }
+
+    // ── 아미노산 B ──
+    if(S.hasB){
+        drawAminoAcid(bx, cy, 'B', S.phase<4, true);
+    }
+
+    // ── 물 파티클 ──
+    if(S.phase===3){
+        S.waterParticles.forEach(p=>{
+            drawWaterMolecule(p.x, p.y, p.scale, p.alpha);
+            // 각 파티클에 화살표 선 (출발점 → 현재위치)
+            if(p.alpha>0.3){
+                drawArrow(midX, cy, p.x, p.y,
+                    `rgba(231,76,60,${p.alpha*0.7})`, 2);
+            }
+        });
+    }
+
+    // ── 완성 화면 ──
+    if(S.phase===4){
+        // 상단 완성 배너
+        ctx.save();
+        ctx.shadowColor='rgba(39,174,96,0.8)'; ctx.shadowBlur=20;
+        pill(midX-115,6,230,36,12,'rgba(39,174,96,0.2)','#28a745',2);
+        ctx.restore();
+        ctx.fillStyle='#00ff88';
+        ctx.font='bold 15px Malgun Gothic';
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText('✅ 펩타이드 결합 완성!', midX, 24);
+
+        // 날아간 H₂O 표시 (오른쪽 위)
+        drawWaterMolecule(midX+105, cy-120, 0.9, 0.85);
+
+        // 중심 → H₂O 화살표
+        drawArrow(midX, cy-30, midX+75, cy-100, 'rgba(231,76,60,0.85)', 2.5);
+
+        ctx.fillStyle='rgba(231,76,60,0.9)';
+        ctx.font='bold 12px Malgun Gothic';
+        ctx.textAlign='center';
+        ctx.fillText('H₂O 방출!', midX+80, cy-115);
+    }
+
+    // ── 거리 퍼센트 표시 ──
+    if(S.hasA && S.hasB && S.phase===2){
+        const closePct = 100 - S.sliderVal;  // 가까운 정도
+        ctx.fillStyle='rgba(255,255,255,0.45)';
+        ctx.font='12px Malgun Gothic';
+        ctx.textAlign='center'; ctx.textBaseline='top';
+        ctx.fillText(`접근도: ${closePct}%`, midX, 6);
+    }
+}
+
+// ═══════════════════════════════════════
+//  물 파티클 초기화 & 틱
+// ═══════════════════════════════════════
+function initWaterParticles(){
+    const W=cvs.width, H=cvs.height;
+    const cy=H/2+10, cx=W/2;
+    // 세 방향으로 튀어나옴
+    S.waterParticles = [
+        { x:cx, y:cy, vx: 3,   vy:-5,   scale:1,   alpha:1, life:0 },
+        { x:cx, y:cy, vx:-2.5, vy:-5.5, scale:0.9, alpha:1, life:0 },
+        { x:cx, y:cy, vx: 5,   vy:-3,   scale:0.8, alpha:1, life:0 },
+    ];
+}
+
+function tickWaterParticles(){
+    let allGone=true;
+    S.waterParticles.forEach(p=>{
+        p.x    += p.vx * 3.5;
+        p.y    += p.vy * 3.5;
+        p.life += 0.032;
+        p.alpha = Math.max(0, 1-p.life);
+        if(p.alpha>0) allGone=false;
+    });
+    return allGone;
+}
+
+// ═══════════════════════════════════════
+//  이벤트
+// ═══════════════════════════════════════
+function spawnAmino(type){
+    if(type==='A'){
+        S.hasA=true;
+        document.getElementById('btnA').style.boxShadow='0 0 0 5px rgba(255,107,107,0.6)';
+    } else {
+        S.hasB=true;
+        document.getElementById('btnB').style.boxShadow='0 0 0 5px rgba(72,219,251,0.6)';
+    }
+    if(S.hasA && S.hasB){
+        S.phase=2;
+        S.sliderVal=100;                                   // 처음엔 멀리
+        const sl=document.getElementById('distSlider');
+        sl.disabled=false;
+        sl.value=100;                                      // 슬라이더도 오른쪽(멀리)
+    } else {
+        S.phase=1;
+    }
+    updateUI(); draw();
+}
+
+// ★ 핵심 수정: value가 클수록 멀리 = sliderVal 그대로 사용
+function onSlider(val){
+    S.sliderVal = parseInt(val);   // 0=가까이, 100=멀리
+
+    // 결합 버튼: 완전히 가까이(0)일 때만 활성화
+    const canBond = S.sliderVal===0 && S.hasA && S.hasB && S.phase===2;
+    document.getElementById('bondBtn').disabled = !canBond;
+
+    updateDistStatus(S.sliderVal);
+    updateUI(); draw();
+}
+
+function updateDistStatus(val){
+    const el=document.getElementById('distStatus');
+    const lbl=document.getElementById('distLabel');
+    if(val===0){
+        el.textContent='🟢 완전 접촉! 결합 버튼을 누르세요!';
+        el.style.color='#27ae60';
+        lbl.textContent='완전 접촉';
+    } else if(val<=25){
+        el.textContent='매우 가까움';
+        el.style.color='#27ae60';
+        lbl.textContent='매우 가까움';
+    } else if(val<=50){
+        el.textContent='가까움';
+        el.style.color='#f1c40f';
+        lbl.textContent='가까움';
+    } else if(val<=75){
+        el.textContent='멀리';
+        el.style.color='#e67e22';
+        lbl.textContent='멀리';
+    } else {
+        el.textContent='매우 멀리';
+        el.style.color='#e74c3c';
+        lbl.textContent='매우 멀리';
+    }
+}
+
+function startBond(){
+    if(S.phase!==2 || S.sliderVal!==0) return;
+    S.phase=3;
+    document.getElementById('bondBtn').disabled=true;
+    document.getElementById('distSlider').disabled=true;
+    initWaterParticles();
+    updateUI();
+    animateBond();
+}
+
+function animateBond(){
+    draw();
+    const allGone=tickWaterParticles();
+    if(!allGone){
+        S.animId=requestAnimationFrame(animateBond);
+    } else {
+        S.phase=4;
+        S.waterParticles=[];
+        updateUI(); draw();
+    }
+}
+
+function resetAll(){
+    cancelAnimationFrame(S.animId);
+    S={ hasA:false, hasB:false, sliderVal:100, phase:0, animId:null, waterParticles:[] };
+    const sl=document.getElementById('distSlider');
+    sl.value=100; sl.disabled=true;
+    document.getElementById('bondBtn').disabled=true;
+    document.getElementById('btnA').style.boxShadow='';
+    document.getElementById('btnB').style.boxShadow='';
+    document.getElementById('distStatus').textContent='';
+    document.getElementById('distLabel').textContent='슬라이더를 움직여보세요';
+    updateUI(); draw();
+}
+
+// ═══════════════════════════════════════
+//  UI 업데이트
+// ═══════════════════════════════════════
+function updateUI(){
+    const ids=['st1','st2','st3','st4'];
+    const ib=document.getElementById('infoBox');
+    const fr=document.getElementById('fRow');
+
+    const set=(a,b,c,d)=>{
+        [a,b,c,d].forEach((cls,i)=>{
+            document.getElementById(ids[i]).className='step '+cls;
+        });
+    };
+
+    if(S.phase===4){
+        set('done','done','done','active');
+        ib.className='info-box s4';
+        ib.innerHTML='🎉 <strong>펩타이드 결합 완성!</strong><br>' +
+            'A의 <strong style="color:#c0392b">-COOH</strong>에서 OH, B의 <strong style="color:#2980b9">-NH₂</strong>에서 H가 빠져나가 '+
+            '<strong>H₂O</strong>이 방출되고, <strong style="color:#6c5ce7">-CO-NH-</strong> 펩타이드 결합이 형성되었습니다.<br>'+
+            '이 분자를 <strong>다이펩타이드(dipeptide)</strong>라고 합니다!';
+        fr.innerHTML='<span class="badge b-red">아미노산 A</span>'+
+            '<span class="badge b-gray">+</span>'+
+            '<span class="badge b-blue">아미노산 B</span>'+
+            '<span class="badge b-gray">→</span>'+
+            '<span class="badge b-purple">다이펩타이드</span>'+
+            '<span class="badge b-gray">+</span>'+
+            '<span class="badge b-green">H₂O ↑</span>';
+
+    } else if(S.phase===3){
+        set('done','done','active','step');
+        ib.className='info-box s3';
+        ib.innerHTML='💧 <strong>물 분자(H₂O)가 방출되고 있습니다!</strong><br>'+
+            '<strong style="color:#c0392b">-COOH</strong>의 OH와 '+
+            '<strong style="color:#2980b9">-NH₂</strong>의 H가 결합하여 H₂O가 되어 빠져나갑니다.';
+        fr.innerHTML='<span class="badge b-red">-COOH</span>'+
+            '<span class="badge b-gray">+</span>'+
+            '<span class="badge b-blue">H-NH-</span>'+
+            '<span class="badge b-gray">→ 탈수 반응 →</span>'+
+            '<span class="badge b-purple">-CO-NH-</span>'+
+            '<span class="badge b-gray">+ H₂O</span>';
+
+    } else if(S.phase===2){
+        if(S.sliderVal===0){
+            set('done','done','active','step');
+            ib.className='info-box s3';
+            ib.innerHTML='⚡ <strong>완전히 접촉했습니다!</strong> '+
+                '<strong>[💧 물 분자 방출]</strong> 버튼을 눌러 펩타이드 결합을 만들어보세요!';
+        } else if(S.sliderVal<=40){
+            set('done','active','step','step');
+            ib.className='info-box s2';
+            ib.innerHTML='➡️ 거의 다 왔어요! 슬라이더를 <strong>왼쪽 끝(가까이)</strong>까지 조금만 더 밀어주세요!';
+        } else {
+            set('done','active','step','step');
+            ib.className='info-box s2';
+            ib.innerHTML='🟢 슬라이더를 <strong>왼쪽(가까이)</strong>으로 밀면 아미노산이 가까워지고,<br>'+
+                '🔴 <strong>오른쪽(멀리)</strong>으로 밀면 아미노산이 멀어집니다.<br>'+
+                '두 아미노산을 완전히 붙여보세요!';
+        }
+        fr.innerHTML='<span class="badge b-red">아미노산 A (-COOH)</span>'+
+            '<span class="badge b-gray">↔</span>'+
+            '<span class="badge b-blue">아미노산 B (-NH₂)</span>';
+
+    } else if(S.phase===1){
+        set('active','step','step','step');
+        ib.className='info-box s1';
+        const other=S.hasA?'B':'A';
+        ib.innerHTML=`✅ 아미노산 ${S.hasA?'A':'B'} 등장! 이제 <strong>아미노산 ${other}</strong> 버튼도 눌러주세요!`;
+        fr.innerHTML=S.hasA
+            ?'<span class="badge b-red">아미노산 A ✓</span><span class="badge b-gray">아미노산 B ?</span>'
+            :'<span class="badge b-gray">아미노산 A ?</span><span class="badge b-blue">아미노산 B ✓</span>';
+
+    } else {
+        set('active','step','step','step');
+        ib.className='info-box s1';
+        ib.innerHTML='🔴 <strong>A 버튼</strong>과 🔵 <strong>B 버튼</strong>을 눌러 두 아미노산을 등장시키세요!';
+        fr.innerHTML='<span class="badge b-gray">아미노산을 등장시켜 주세요</span>';
+    }
+}
+
+window.addEventListener('load', ()=>{ resize(); updateUI(); });
+</script>
+</body>
+</html>
